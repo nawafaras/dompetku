@@ -141,6 +141,15 @@ function RemindersPage() {
                 >
                   <CheckCircle2 className="size-4" /> {t("Bayar")}
                 </Button>
+              ) : r.type === "credit_card" ? (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="col-start-2 col-end-4 justify-self-end"
+                >
+                  <Link to="/credit-cards">{t("Bayar")}</Link>
+                </Button>
               ) : null}
             </div>
           ))}

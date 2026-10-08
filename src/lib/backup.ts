@@ -31,6 +31,8 @@ export const RESTORE_TABLES = [
   "budget_alerts",
   "account_reconciliations",
   "app_settings",
+  "credit_card_statements",
+  "credit_card_payments",
 ] as const;
 export type RestoreTable = (typeof RESTORE_TABLES)[number];
 
@@ -63,6 +65,8 @@ export const CONFLICT_KEYS: Record<RestoreTable, string[]> = {
   budget_alerts: ["id"],
   account_reconciliations: ["id"],
   app_settings: ["id"],
+  credit_card_statements: ["id"],
+  credit_card_payments: ["id"],
 };
 
 /**
@@ -76,6 +80,8 @@ export const NATURAL_KEYS: Partial<Record<RestoreTable, string[]>> = {
   debt_payments: ["debt_id", "installment_no"],
   transactions: ["external_id"],
   budget_alerts: ["budget_id", "month", "level"],
+  credit_card_statements: ["account_id", "period_end"],
+  credit_card_payments: ["request_key"],
 };
 
 /** FK column → referenced table, used to rewrite ids remapped by natural keys. */
@@ -88,6 +94,8 @@ export const FK_COLUMNS: Record<string, RestoreTable> = {
   receivable_id: "receivables",
   budget_id: "budgets",
   bot_default_account_id: "accounts",
+  statement_id: "credit_card_statements",
+  fee_transaction_id: "transactions",
 };
 
 /**
@@ -214,6 +222,13 @@ export function applyRemap(table: RestoreTable, rows: Row[], remap: IdRemap): Ro
       const v = out[col];
       const m = remap[ref];
       if (typeof v === "string" && m && m[v]) out[col] = m[v];
+    }
+    if (table === "credit_card_statements" && Array.isArray(out["snapshot"])) {
+      out["snapshot"] = (out["snapshot"] as Row[]).map((tx) => ({
+        ...tx,
+        id: remap.transactions?.[String(tx["id"])] ?? tx["id"],
+        account_id: remap.accounts?.[String(tx["account_id"])] ?? tx["account_id"],
+      }));
     }
     return out;
   });

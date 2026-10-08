@@ -494,3 +494,115 @@ revoke all on public.ai_usage from anon, authenticated;
 grant all on public.ai_usage to service_role;
 alter table public.ai_usage enable row level security;
 notify pgrst, 'reload schema';
+
+-- ===== v16: tagihan kartu kredit (aman dijalankan ulang) =====
+alter table public.accounts add column if not exists credit_card_cutoff_day int check (credit_card_cutoff_day between 1 and 31);
+alter table public.accounts add column if not exists credit_card_due_day int check (credit_card_due_day between 1 and 31);
+alter table public.accounts add column if not exists credit_card_start_month text check (credit_card_start_month ~ '^\d{4}-(0[1-9]|1[0-2])$');
+alter table public.accounts add column if not exists credit_card_opening_due numeric(18,2) check (credit_card_opening_due >= 0);
+create table if not exists public.credit_card_statements (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete restrict,
+  period_start date not null, period_end date not null, due_date date not null,
+  currency text not null check (currency in ('IDR','USD')),
+  calculated_amount numeric(18,2) not null, opening_amount numeric(18,2) not null default 0,
+  final_amount numeric(18,2) not null, correction_note text,
+  snapshot jsonb not null default '[]', created_at timestamptz not null default now(),
+  unique(account_id, period_end), check(period_start <= period_end), check(due_date > period_end)
+);
+create table if not exists public.credit_card_payments (
+  id uuid primary key default gen_random_uuid(),
+  statement_id uuid not null references public.credit_card_statements(id) on delete restrict,
+  transaction_id uuid not null references public.transactions(id) on delete restrict,
+  allocated_amount numeric(18,2) not null check(allocated_amount > 0),
+  fee_transaction_id uuid references public.transactions(id) on delete restrict,
+  owned boolean not null default false, request_key uuid not null unique,
+  created_at timestamptz not null default now()
+);
+create index if not exists card_statements_due_idx on public.credit_card_statements(due_date);
+create index if not exists card_payments_statement_idx on public.credit_card_payments(statement_id);
+create index if not exists card_payments_transaction_idx on public.credit_card_payments(transaction_id);
+alter table public.credit_card_statements enable row level security;
+alter table public.credit_card_payments enable row level security;
+revoke all on public.credit_card_statements, public.credit_card_payments from anon, authenticated;
+grant all on public.credit_card_statements, public.credit_card_payments to service_role;
+
+create or replace function public.dk_card_payment(p_statement uuid, p_source uuid, p_amount numeric, p_date date, p_fee numeric, p_rate numeric, p_key uuid, p_transfer uuid)
+returns uuid language plpgsql security invoker set search_path = public as $$
+declare s credit_card_statements; a accounts; src accounts; tx transactions; paid numeric; allocated numeric; result uuid; txid uuid; feeid uuid; cat uuid;
+begin
+  select * into s from credit_card_statements where id=p_statement for update;
+  if not found then raise exception 'Tagihan tidak ditemukan'; end if;
+  select id into result from credit_card_payments where request_key=p_key;
+  if found then return result; end if;
+  select * into a from accounts where id=s.account_id;
+  if a.type <> 'credit_card' or a.currency <> s.currency then raise exception 'Konfigurasi kartu tidak valid'; end if;
+  if p_amount is null or p_amount <= 0 or p_amount <> round(p_amount,2) or p_fee is null or p_fee < 0 or p_rate is null or p_rate <= 0 or p_date is null then raise exception 'Nominal atau tanggal tidak valid'; end if;
+  select coalesce(sum(allocated_amount),0) into paid from credit_card_payments where statement_id=s.id;
+  if p_amount > greatest(0,s.final_amount-paid) then raise exception 'Pembayaran melebihi sisa tagihan'; end if;
+  if p_transfer is not null then
+    select * into tx from transactions where id=p_transfer for update;
+    if not found or tx.kind <> 'transfer' or tx.to_account_id <> a.id or tx.account_id is null or tx.account_id=a.id or tx.currency <> s.currency then raise exception 'Transfer tidak valid'; end if;
+    if exists(select 1 from credit_card_payments where transaction_id=tx.id and owned) then raise exception 'Transfer dikelola pembayaran tagihan lain'; end if;
+    select coalesce(sum(allocated_amount),0) into allocated from credit_card_payments where transaction_id=tx.id;
+    if allocated+p_amount > tx.amount then raise exception 'Alokasi melebihi nominal transfer'; end if;
+    txid := tx.id;
+  else
+    select * into src from accounts where id=p_source for update;
+    if not found or src.id=a.id or src.type='credit_card' or src.archived or src.currency<>s.currency then raise exception 'Sumber dana tidak valid'; end if;
+    insert into transactions(kind,amount,currency,amount_idr,account_id,to_account_id,description,occurred_at,source,external_id)
+      values('transfer',p_amount,s.currency,round(p_amount*case when s.currency='USD' then p_rate else 1 end,2),src.id,a.id,'Pembayaran kartu kredit '||a.name,p_date,'web','card:'||p_key) returning id into txid;
+    if p_fee > 0 then
+      insert into categories(name,kind) values('Biaya Admin','expense') on conflict(name,kind) do nothing;
+      select id into cat from categories where name='Biaya Admin' and kind='expense';
+      insert into transactions(kind,amount,currency,amount_idr,account_id,category_id,description,occurred_at,source)
+        values('expense',p_fee,s.currency,round(p_fee*case when s.currency='USD' then p_rate else 1 end,2),src.id,cat,'Biaya pembayaran kartu kredit '||a.name,p_date,'web') returning id into feeid;
+    end if;
+  end if;
+  insert into credit_card_payments(statement_id,transaction_id,allocated_amount,fee_transaction_id,owned,request_key)
+    values(s.id,txid,p_amount,feeid,p_transfer is null,p_key) returning id into result;
+  return result;
+end $$;
+
+create or replace function public.dk_card_cancel(p_payment uuid)
+returns void language plpgsql security invoker set search_path = public as $$
+declare p credit_card_payments; sid uuid;
+begin
+  select statement_id into sid from credit_card_payments where id=p_payment;
+  perform 1 from credit_card_statements where id=sid for update;
+  select * into p from credit_card_payments where id=p_payment for update;
+  if not found then return; end if;
+  delete from credit_card_payments where id=p.id;
+  if p.owned then
+    delete from transactions where id=p.transaction_id;
+    delete from transactions where id=p.fee_transaction_id;
+  end if;
+end $$;
+
+create or replace function public.dk_card_correct(p_statement uuid,p_amount numeric,p_note text,p_calculated numeric,p_snapshot jsonb)
+returns void language plpgsql security invoker set search_path = public as $$
+begin
+  perform 1 from credit_card_statements where id=p_statement for update;
+  if not found then raise exception 'Tagihan tidak ditemukan'; end if;
+  if p_amount is null then raise exception 'Nominal tidak valid'; end if;
+  update credit_card_statements set final_amount=p_amount, correction_note=nullif(p_note,''),
+    calculated_amount=coalesce(p_calculated,calculated_amount), snapshot=coalesce(p_snapshot,snapshot)
+    where id=p_statement;
+end $$;
+
+-- Proteksi berlaku juga untuk bot, recurring dan CRUD biasa. Restore replace menghapus pembayaran lebih dahulu.
+create or replace function public.dk_card_protect_transaction()
+returns trigger language plpgsql set search_path=public as $$
+begin
+  if tg_op='UPDATE' and new is not distinct from old then return new; end if;
+  if exists(select 1 from credit_card_payments where transaction_id=old.id or fee_transaction_id=old.id) then
+    raise exception 'Transaksi terkait tagihan kartu kredit. Batalkan pembayaran atau lepas tautan dahulu.';
+  end if;
+  if tg_op='DELETE' then return old; end if;
+  return new;
+end $$;
+drop trigger if exists card_protect_transaction on public.transactions;
+create trigger card_protect_transaction before update or delete on public.transactions for each row execute function dk_card_protect_transaction();
+revoke all on function public.dk_card_payment(uuid,uuid,numeric,date,numeric,numeric,uuid,uuid), public.dk_card_cancel(uuid), public.dk_card_correct(uuid,numeric,text,numeric,jsonb), public.dk_card_protect_transaction() from public,anon,authenticated;
+grant execute on function public.dk_card_payment(uuid,uuid,numeric,date,numeric,numeric,uuid,uuid), public.dk_card_cancel(uuid), public.dk_card_correct(uuid,numeric,text,numeric,jsonb) to service_role;
+notify pgrst,'reload schema';

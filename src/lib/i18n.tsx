@@ -4,6 +4,49 @@ export type Lang = "id" | "en";
 
 /** Indonesian is the source language; keys are Indonesian strings. */
 const DICT: Record<string, string> = {
+  "Tagihan Kartu Kredit": "Credit Card Bills",
+  "Pembayaran baru": "New payment",
+  "Kelebihan pembayaran": "Overpayment",
+  "Tagihan kartu kredit dibayar": "Credit card bill paid",
+  "Pembayaran kartu kredit dibatalkan": "Credit card payment cancelled",
+  "Tanggal cut-off (1-31)": "Statement closing day (1-31)",
+  "Periode pertama (YYYY-MM)": "First statement month (YYYY-MM)",
+  "Utang awal belum tercatat dalam transaksi": "Opening debt not included in transactions",
+  "Pembayaran dicatat sebagai transfer, bukan pengeluaran baru.":
+    "Payments are recorded as transfers, not new expenses.",
+  "Jalankan bagian v16 di supabase/schema.sql untuk mengaktifkan tagihan kartu kredit.":
+    "Run section v16 in supabase/schema.sql to enable credit card bills.",
+  "Atur cut-off, jatuh tempo dan periode pertama pada akun kartu kredit.":
+    "Set the closing day, due day and first statement month on the credit card account.",
+  "Estimasi berjalan": "Current estimate",
+  "Pengaturan tagihan belum lengkap": "Billing settings are incomplete",
+  "Belum ada tagihan tercetak": "No closed statements yet",
+  "Belum dibayar": "Unpaid",
+  Sebagian: "Partially paid",
+  "Koreksi tagihan": "Adjust statement",
+  "Nominal final": "Final amount",
+  "Catatan koreksi": "Adjustment note",
+  "Bayar tagihan kartu kredit": "Pay credit card bill",
+  "Pencatatan transfer saja; uang tidak dikirim melalui bank.":
+    "Records a transfer only; no money is sent through your bank.",
+  "Koreksi tagihan tidak mengubah saldo akun. Catat biaya atau refund secara terpisah.":
+    "Adjusting a statement does not change account balances. Record fees or refunds separately.",
+  "Tautkan transfer yang sudah ada (opsional)": "Link an existing transfer (optional)",
+  "Batalkan pembayaran dan hapus transfer terkait?": "Cancel payment and delete its transfer?",
+  "Lepas tautan pembayaran? Transfer tetap tersimpan.":
+    "Unlink payment? The transfer will be retained.",
+  "Lepas tautan": "Unlink",
+  "Detail tagihan": "Statement details",
+  "Periksa transaksi dan selisih terhadap snapshot tagihan.":
+    "Review transactions and differences from the statement snapshot.",
+  "Nominal otomatis": "Calculated amount",
+  "Ada perubahan transaksi": "Transactions have changed",
+  "Perbarui perhitungan dan ganti nominal final?":
+    "Refresh the calculation and replace the final amount?",
+  "Perbarui perhitungan": "Refresh calculation",
+  "Transfer masuk terbaru": "Recent incoming transfers",
+  "Salin ID transfer untuk ditautkan saat membayar tagihan.":
+    "Copy a transfer ID to link it when paying a statement.",
   /* Shell */
   Dashboard: "Dashboard",
   Transaksi: "Transactions",

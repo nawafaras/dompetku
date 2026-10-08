@@ -45,6 +45,43 @@ export const saveRow = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const values = tableSchemas[data.table].parse(data.values);
+    if (data.table === "accounts") {
+      const a = values as z.output<typeof import("./schemas").accountSchema>;
+      const configured = [
+        a.credit_card_cutoff_day,
+        a.credit_card_due_day,
+        a.credit_card_start_month,
+      ].filter(Boolean).length;
+      if (configured && (configured !== 3 || a.type !== "credit_card"))
+        throw new Error("Lengkapi pengaturan tagihan kartu kredit.");
+      if (a.credit_card_start_month && a.credit_card_start_month < "2000-01")
+        throw new Error("Periode pertama minimal Januari 2000.");
+      if (data.id) {
+        const { db } = await import("./db.server");
+        const existing = await db()
+          .from("credit_card_statements")
+          .select("id")
+          .eq("account_id", data.id)
+          .limit(1);
+        const { isMissingTable } = await import("./finance.server");
+        if (existing.error && !isMissingTable(existing.error))
+          throw new Error(existing.error.message);
+        if (existing.data?.length) {
+          const old = await db().from("accounts").select("*").eq("id", data.id).single();
+          if (old.error) throw new Error(old.error.message);
+          if (
+            a.type !== "credit_card" ||
+            a.currency !== old.data.currency ||
+            a.credit_card_start_month !== old.data.credit_card_start_month ||
+            a.credit_card_opening_due !== old.data.credit_card_opening_due ||
+            !configured
+          )
+            throw new Error(
+              "Kartu sudah memiliki tagihan. Jenis, mata uang, periode pertama dan utang awal tidak dapat diubah.",
+            );
+        }
+      }
+    }
     if (!data.id) await (await import("./demo.server")).assertDemoCapacity(data.table);
     if (data.table === "gold_purchases") {
       const { saveGold } = await import("./assets.server");
@@ -66,6 +103,25 @@ export const saveRow = createServerFn({ method: "POST" })
         .select()
         .single();
     let res = await run(values);
+    const cardColumns = [
+      "credit_card_cutoff_day",
+      "credit_card_due_day",
+      "credit_card_start_month",
+      "credit_card_opening_due",
+    ];
+    if (
+      data.table === "accounts" &&
+      res.error &&
+      cardColumns.some((c) => res.error!.message.includes(c))
+    ) {
+      const v = { ...values } as Record<string, unknown>;
+      if (cardColumns.some((c) => v[c] != null))
+        throw new Error(
+          "Jalankan bagian v16 di supabase/schema.sql untuk mengaktifkan tagihan kartu kredit.",
+        );
+      for (const c of cardColumns) delete v[c];
+      res = await run(v);
+    }
     // Optional v4/v8 columns may not exist yet in the user's database: retry without them.
     const optional =
       data.table === "accounts"

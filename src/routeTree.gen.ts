@@ -16,6 +16,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AppAccountsRouteImport } from './routes/_app/accounts'
 import { Route as AppBudgetsRouteImport } from './routes/_app/budgets'
+import { Route as AppCreditCardsRouteImport } from './routes/_app/credit-cards'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppDebtsRouteImport } from './routes/_app/debts'
 import { Route as AppGoalsRouteImport } from './routes/_app/goals'
@@ -74,6 +75,11 @@ const AppAccountsRoute = AppAccountsRouteImport.update({
 const AppBudgetsRoute = AppBudgetsRouteImport.update({
   id: '/budgets',
   path: '/budgets',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCreditCardsRoute = AppCreditCardsRouteImport.update({
+  id: '/credit-cards',
+  path: '/credit-cards',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/accounts': typeof AppAccountsRoute
   '/budgets': typeof AppBudgetsRoute
+  '/credit-cards': typeof AppCreditCardsRoute
   '/dashboard': typeof AppDashboardRoute
   '/debts': typeof AppDebtsRoute
   '/goals': typeof AppGoalsRoute
@@ -245,6 +252,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/accounts': typeof AppAccountsRoute
   '/budgets': typeof AppBudgetsRoute
+  '/credit-cards': typeof AppCreditCardsRoute
   '/dashboard': typeof AppDashboardRoute
   '/debts': typeof AppDebtsRoute
   '/goals': typeof AppGoalsRoute
@@ -280,6 +288,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/_app/accounts': typeof AppAccountsRoute
   '/_app/budgets': typeof AppBudgetsRoute
+  '/_app/credit-cards': typeof AppCreditCardsRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/debts': typeof AppDebtsRoute
   '/_app/goals': typeof AppGoalsRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/accounts'
     | '/budgets'
+    | '/credit-cards'
     | '/dashboard'
     | '/debts'
     | '/goals'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/accounts'
     | '/budgets'
+    | '/credit-cards'
     | '/dashboard'
     | '/debts'
     | '/goals'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/_app/accounts'
     | '/_app/budgets'
+    | '/_app/credit-cards'
     | '/_app/dashboard'
     | '/_app/debts'
     | '/_app/goals'
@@ -478,6 +490,13 @@ declare module '@tanstack/react-router' {
       path: '/budgets'
       fullPath: '/budgets'
       preLoaderRoute: typeof AppBudgetsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/credit-cards': {
+      id: '/_app/credit-cards'
+      path: '/credit-cards'
+      fullPath: '/credit-cards'
+      preLoaderRoute: typeof AppCreditCardsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -661,6 +680,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAccountsRoute: typeof AppAccountsRoute
   AppBudgetsRoute: typeof AppBudgetsRoute
+  AppCreditCardsRoute: typeof AppCreditCardsRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDebtsRoute: typeof AppDebtsRoute
   AppGoalsRoute: typeof AppGoalsRoute
@@ -679,6 +699,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAccountsRoute: AppAccountsRoute,
   AppBudgetsRoute: AppBudgetsRoute,
+  AppCreditCardsRoute: AppCreditCardsRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDebtsRoute: AppDebtsRoute,
   AppGoalsRoute: AppGoalsRoute,

@@ -11,6 +11,7 @@ const ENTITY: Record<string, string> = {
   gold_purchases: "Emas",
   receivables: "Piutang",
   recurring_transactions: "Transaksi Berulang",
+  credit_card_statements: "Tagihan Kartu Kredit",
 };
 
 const VERB: Record<string, string> = {
@@ -20,6 +21,8 @@ const VERB: Record<string, string> = {
 };
 
 const SPECIAL: Record<string, string> = {
+  "credit_card.pay": "Tagihan kartu kredit dibayar",
+  "credit_card.cancel": "Pembayaran kartu kredit dibatalkan",
   "debt.pay": "Cicilan dibayar",
   "debt_payment.delete": "Pembayaran cicilan dibatalkan",
   "subscription.pay": "Langganan ditandai sudah bayar",

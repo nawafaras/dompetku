@@ -108,6 +108,10 @@ function AccountsPage() {
                         topup_fees: formatPresets(a.topup_fees),
                         monthly_fee: a.monthly_fee,
                         monthly_fee_day: a.monthly_fee_day,
+                        credit_card_cutoff_day: a.credit_card_cutoff_day,
+                        credit_card_due_day: a.credit_card_due_day,
+                        credit_card_start_month: a.credit_card_start_month,
+                        credit_card_opening_due: a.credit_card_opening_due,
                       })
                     }
                     onDelete={() => crud.remove(a.id, `${t("akun")} ${a.name}`)}
@@ -128,7 +132,7 @@ function AccountsPage() {
             ))}
         </div>
       )}
-      {crud.dialog(t("akun"), [
+      {crud.dialog(t("akun"), (v) => [
         { name: "name", label: t("Nama"), type: "text", placeholder: "BCA, GoPay, Dompet…" },
         { name: "type", label: t("Jenis"), type: "select", half: true, options: TYPES },
         {
@@ -167,6 +171,33 @@ function AccountsPage() {
           placeholder: "25",
         },
         { name: "archived", label: t("Arsipkan akun"), type: "switch" },
+        ...(v["type"] === "credit_card"
+          ? [
+              {
+                name: "credit_card_cutoff_day",
+                label: t("Tanggal cut-off (1-31)"),
+                type: "number" as const,
+                half: true,
+              },
+              {
+                name: "credit_card_due_day",
+                label: t("Tanggal jatuh tempo (1-31)"),
+                type: "number" as const,
+                half: true,
+              },
+              {
+                name: "credit_card_start_month",
+                label: t("Periode pertama (YYYY-MM)"),
+                type: "text" as const,
+                placeholder: "2026-10",
+              },
+              {
+                name: "credit_card_opening_due",
+                label: t("Utang awal belum tercatat dalam transaksi"),
+                type: "number" as const,
+              },
+            ]
+          : []),
       ])}
     </>
   );

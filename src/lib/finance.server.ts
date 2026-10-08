@@ -840,7 +840,7 @@ export async function paySubscription(id: string, accountId: string | null, date
 
 /* ---------------- Reminders ---------------- */
 export type Reminder = {
-  type: "debt" | "subscription" | "budget" | "fee" | "recurring";
+  type: "debt" | "subscription" | "budget" | "fee" | "recurring" | "credit_card";
   id: string;
   title: string;
   amount: number;
@@ -942,6 +942,8 @@ export async function computeReminders(days = 30, pre: ReminderInputs = {}): Pro
   // v10: manual recurring items (auto_post off) — empty when the table does not exist yet.
   const { recurringReminders } = await import("./recurring.server");
   out.push(...(await recurringReminders(t, limit, rate)));
+  const { cardReminders } = await import("./credit-card.server");
+  out.push(...(await cardReminders(limit, t, rate)));
   return out.sort((a, b) => a.due_date.localeCompare(b.due_date));
 }
 
@@ -1635,6 +1637,8 @@ export async function exportBackup() {
     "budget_alerts",
     "account_reconciliations",
     "app_settings",
+    "credit_card_statements",
+    "credit_card_payments",
   ] as const;
   const data: Record<string, any[]> = {};
   // Tables keyed without an `id` column (fx_rates, gold_prices) use their composite primary key for stable paging.

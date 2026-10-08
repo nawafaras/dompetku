@@ -30,6 +30,24 @@ export const accountSchema = z.object({
   initial_balance: z.coerce.number().finite().default(0),
   color: optText(20),
   archived: z.boolean().default(false),
+  credit_card_cutoff_day: z
+    .preprocess(emptyToNull, z.coerce.number().int().min(1).max(31).nullable())
+    .default(null),
+  credit_card_due_day: z
+    .preprocess(emptyToNull, z.coerce.number().int().min(1).max(31).nullable())
+    .default(null),
+  credit_card_start_month: z
+    .preprocess(
+      emptyToNull,
+      z
+        .string()
+        .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
+        .nullable(),
+    )
+    .default(null),
+  credit_card_opening_due: z
+    .preprocess(emptyToNull, z.coerce.number().finite().min(0).max(1e12).nullable())
+    .default(null),
   transfer_fees: z
     .preprocess(
       (v) => parsePresets(v),

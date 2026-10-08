@@ -24,11 +24,24 @@ import {
   saveRow,
 } from "./finance.functions";
 import { getRecurring } from "./recurring.functions";
+import { getCardStatements, getCardDetail } from "./credit-card.functions";
 import { getAccountReport, getReconcileTransactions } from "./account-report.functions";
 import type { CrudTable } from "./schemas";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const FRESH = 60_000;
+export const cardStatementsQuery = (offset = 0, account?: string) =>
+  queryOptions({
+    queryKey: ["credit-cards", offset, account],
+    queryFn: () => getCardStatements({ data: { offset, account } }),
+    staleTime: FRESH,
+  });
+export const cardDetailQuery = (id: string) =>
+  queryOptions({
+    queryKey: ["credit-card-detail", id],
+    queryFn: () => getCardDetail({ data: id }),
+    staleTime: FRESH,
+  });
 const REFERENCE_FRESH = 300_000;
 export const rowsQuery = (table: CrudTable) =>
   queryOptions({
@@ -148,6 +161,8 @@ export const yearlyQuery = (year: string) =>
 
 /** Money-moving changes touch every aggregate; reference data only touches its own lists. */
 const MONEY = [
+  "credit-cards",
+  "credit-card-detail",
   "tx",
   "tx-count",
   "dashboard",
@@ -164,6 +179,8 @@ const MONEY = [
   "account-recon",
 ];
 const AFFECTS: Record<string, string[]> = {
+  credit_card_statements: MONEY,
+  credit_card_payments: MONEY,
   transactions: MONEY,
   accounts: [...MONEY, "rows"],
   categories: ["rows", "tx", "dashboard", "budgets", "trend", "activity"],

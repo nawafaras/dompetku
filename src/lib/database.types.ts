@@ -12,6 +12,30 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 type Currency = "IDR" | "USD";
+type CardStatement = {
+  id: string;
+  account_id: string;
+  period_start: string;
+  period_end: string;
+  due_date: string;
+  currency: Currency;
+  calculated_amount: number;
+  opening_amount: number;
+  final_amount: number;
+  correction_note: string | null;
+  snapshot: Json;
+  created_at: string;
+};
+type CardPayment = {
+  id: string;
+  statement_id: string;
+  transaction_id: string;
+  allocated_amount: number;
+  fee_transaction_id: string | null;
+  owned: boolean;
+  request_key: string;
+  created_at: string;
+};
 
 export type Database = {
   __InternalSupabase: {
@@ -19,6 +43,18 @@ export type Database = {
   };
   public: {
     Tables: {
+      credit_card_statements: {
+        Row: CardStatement;
+        Insert: Omit<CardStatement, "id" | "created_at"> & { id?: string; created_at?: string };
+        Update: Partial<CardStatement>;
+        Relationships: [];
+      };
+      credit_card_payments: {
+        Row: CardPayment;
+        Insert: Omit<CardPayment, "id" | "created_at"> & { id?: string; created_at?: string };
+        Update: Partial<CardPayment>;
+        Relationships: [];
+      };
       accounts: {
         Row: {
           id: string;
@@ -37,6 +73,10 @@ export type Database = {
           monthly_fee?: number | null;
           /** v4 */
           monthly_fee_day?: number | null;
+          credit_card_cutoff_day?: number | null;
+          credit_card_due_day?: number | null;
+          credit_card_start_month?: string | null;
+          credit_card_opening_due?: number | null;
         };
         Insert: {
           id?: string;
@@ -51,6 +91,10 @@ export type Database = {
           topup_fees?: Json;
           monthly_fee?: number | null;
           monthly_fee_day?: number | null;
+          credit_card_cutoff_day?: number | null;
+          credit_card_due_day?: number | null;
+          credit_card_start_month?: string | null;
+          credit_card_opening_due?: number | null;
         };
         Update: {
           id?: string;
@@ -65,6 +109,10 @@ export type Database = {
           topup_fees?: Json;
           monthly_fee?: number | null;
           monthly_fee_day?: number | null;
+          credit_card_cutoff_day?: number | null;
+          credit_card_due_day?: number | null;
+          credit_card_start_month?: string | null;
+          credit_card_opening_due?: number | null;
         };
         Relationships: [];
       };
@@ -1013,6 +1061,30 @@ export type Database = {
       };
     };
     Functions: {
+      dk_card_payment: {
+        Args: {
+          p_statement: string;
+          p_source: string | null;
+          p_amount: number;
+          p_date: string;
+          p_fee: number;
+          p_rate: number;
+          p_key: string;
+          p_transfer: string | null;
+        };
+        Returns: string;
+      };
+      dk_card_cancel: { Args: { p_payment: string }; Returns: undefined };
+      dk_card_correct: {
+        Args: {
+          p_statement: string;
+          p_amount: number;
+          p_note: string;
+          p_calculated: number | null;
+          p_snapshot: Json | null;
+        };
+        Returns: undefined;
+      };
       /** v9: totals (IDR) per month and kind in [p_start, p_end), transfers excluded. */
       dk_month_totals: {
         Args: { p_start: string; p_end: string };

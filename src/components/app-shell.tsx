@@ -39,6 +39,7 @@ const NAV = [
   { to: "/reports", label: "Laporan", icon: BarChart3 },
   { to: "/rekap", label: "Rekap Tahunan", icon: BarChart3 },
   { to: "/accounts", label: "Akun", icon: Wallet },
+  { to: "/credit-cards", label: "Tagihan Kartu Kredit", icon: CreditCard },
   { to: "/debts", label: "Hutang & Cicilan", icon: CreditCard },
   { to: "/subscriptions", label: "Langganan", icon: Repeat },
   { to: "/recurring", label: "Transaksi Berulang", icon: CalendarClock },
